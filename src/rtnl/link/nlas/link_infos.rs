@@ -11,7 +11,7 @@ use netlink_packet_utils::{
     DecodeError,
 };
 
-use super::{bond::InfoBond, bridge::InfoBridge};
+use super::{bond::InfoBond, bond_port::InfoBondPort, bridge::InfoBridge};
 use crate::{constants::*, LinkMessage, LinkMessageBuffer};
 
 const DUMMY: &str = "dummy";
@@ -23,6 +23,7 @@ const VLAN: &str = "vlan";
 const VETH: &str = "veth";
 const VXLAN: &str = "vxlan";
 const BOND: &str = "bond";
+const BONDPORT: &str = "bond_slave";
 const IPVLAN: &str = "ipvlan";
 const MACVLAN: &str = "macvlan";
 const MACVTAP: &str = "macvtap";
@@ -47,7 +48,7 @@ pub enum Info {
     Kind(InfoKind),
     Data(InfoData),
     SlaveKind(Vec<u8>),
-    SlaveData(Vec<u8>),
+    SlaveData(InfoSlaveData),
 }
 
 impl Nla for Info {
@@ -58,10 +59,10 @@ impl Nla for Info {
             Unspec(ref bytes)
                 | Xstats(ref bytes)
                 | SlaveKind(ref bytes)
-                | SlaveData(ref bytes)
                 => bytes.len(),
             Kind(ref nla) => nla.value_len(),
             Data(ref nla) => nla.value_len(),
+            SlaveData(ref nla) => nla.value_len(),
         }
     }
 
@@ -72,10 +73,10 @@ impl Nla for Info {
             Unspec(ref bytes)
                 | Xstats(ref bytes)
                 | SlaveKind(ref bytes)
-                | SlaveData(ref bytes)
                 => buffer.copy_from_slice(bytes),
             Kind(ref nla) => nla.emit_value(buffer),
             Data(ref nla) => nla.emit_value(buffer),
+            SlaveData(ref nla) => nla.emit_value(buffer),
         }
     }
 
@@ -85,7 +86,7 @@ impl Nla for Info {
             Unspec(_) => IFLA_INFO_UNSPEC,
             Xstats(_) => IFLA_INFO_XSTATS,
             SlaveKind(_) => IFLA_INFO_SLAVE_KIND,
-            SlaveData(_) => IFLA_INFO_DATA,
+            SlaveData(_) => IFLA_INFO_SLAVE_DATA,
             Kind(_) => IFLA_INFO_KIND,
             Data(_) => IFLA_INFO_DATA,
         }
@@ -122,7 +123,29 @@ impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>> for VecInfo {
                     res.push(Info::SlaveKind(nla.value().to_vec()))
                 }
                 IFLA_INFO_SLAVE_DATA => {
-                    res.push(Info::SlaveData(nla.value().to_vec()))
+                    if let Some(link_info_kind) = link_info_kind {
+                        let payload = nla.value();
+                        let mut info_slave_data: Option<InfoSlaveData> = None;
+                        if link_info_kind == InfoKind::BondPort {
+                            let mut v = Vec::new();
+                            let err =
+                                    "failed to parse IFLA_INFO_SLAVE_DATA (IFLA_INFO_KIND is 'bond_slave')";
+                            for nla in NlasIterator::new(payload) {
+                                let nla = &nla.context(err)?;
+                                let parsed = InfoBondPort::parse(nla)
+                                    .context(err)?;
+                                v.push(parsed);
+                            }
+                            info_slave_data = Some(InfoSlaveData::BondPort(v));
+                        }
+                        else{
+                            info_slave_data = Some(InfoSlaveData::Other(payload.to_vec()));
+                        }
+                        res.push(Info::SlaveData(info_slave_data.unwrap()));
+                    } else {
+                        return Err("IFLA_INFO_SLAVE_DATA is not preceded by an IFLA_INFO_KIND".into());
+                    }
+                    link_info_kind = None;
                 }
                 IFLA_INFO_KIND => {
                     let parsed = InfoKind::parse(&nla)?;
@@ -281,7 +304,7 @@ impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>> for VecInfo {
                             InfoKind::Wireguard => {
                                 InfoData::Wireguard(payload.to_vec())
                             }
-                            InfoKind::Other(_) => {
+                            InfoKind::Other(_) | InfoKind::BondPort => {
                                 InfoData::Other(payload.to_vec())
                             }
                             InfoKind::Xfrm => {
@@ -418,6 +441,37 @@ impl Nla for InfoData {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 #[non_exhaustive]
+pub enum InfoSlaveData {
+    BondPort(Vec<InfoBondPort>),
+    Other(Vec<u8>),
+}
+
+impl Nla for InfoSlaveData {
+    #[rustfmt::skip]
+    fn value_len(&self) -> usize {
+        use self::InfoSlaveData::*;
+        match self {
+            BondPort(ref nlas) => nlas.as_slice().buffer_len(),
+            Other(ref bytes) => bytes.len(),
+        }
+    }
+
+    #[rustfmt::skip]
+    fn emit_value(&self, buffer: &mut [u8]) {
+        use self::InfoSlaveData::*;
+        match self {
+            BondPort(ref nlas) => nlas.as_slice().emit(buffer),
+            Other(ref bytes) => buffer.copy_from_slice(bytes),
+        }
+    }
+
+    fn kind(&self) -> u16 {
+        IFLA_INFO_SLAVE_DATA
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+#[non_exhaustive]
 pub enum InfoKind {
     Dummy,
     Ifb,
@@ -428,6 +482,7 @@ pub enum InfoKind {
     Veth,
     Vxlan,
     Bond,
+    BondPort,
     IpVlan,
     MacVlan,
     MacVtap,
@@ -459,6 +514,7 @@ impl Nla for InfoKind {
             Veth => VETH.len(),
             Vxlan => VXLAN.len(),
             Bond => BOND.len(),
+            BondPort => BONDPORT.len(),
             IpVlan => IPVLAN.len(),
             MacVlan => MACVLAN.len(),
             MacVtap => MACVTAP.len(),
@@ -491,6 +547,7 @@ impl Nla for InfoKind {
             Veth => VETH,
             Vxlan => VXLAN,
             Bond => BOND,
+            BondPort => BONDPORT,
             IpVlan => IPVLAN,
             MacVlan => MACVLAN,
             MacVtap => MACVTAP,
