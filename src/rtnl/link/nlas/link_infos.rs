@@ -23,7 +23,6 @@ const VLAN: &str = "vlan";
 const VETH: &str = "veth";
 const VXLAN: &str = "vxlan";
 const BOND: &str = "bond";
-const BONDPORT: &str = "bondport";
 const IPVLAN: &str = "ipvlan";
 const MACVLAN: &str = "macvlan";
 const MACVTAP: &str = "macvtap";
@@ -129,7 +128,7 @@ impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>> for VecInfo {
                     if let Some(link_info_slave_kind) = link_info_slave_kind {
                         let payload = nla.value();
                         let info_slave_data = match link_info_slave_kind {
-                            InfoSlaveKind::BondPort => {
+                            InfoSlaveKind::Bond => {
                                 let mut v = Vec::new();
                                 let err =
                                         "failed to parse IFLA_INFO_SLAVE_DATA (IFLA_INFO_SLAVE_KIND is 'bond_port')";
@@ -622,7 +621,7 @@ impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>> for InfoKind {
 #[derive(Debug, PartialEq, Eq, Clone)]
 #[non_exhaustive]
 pub enum InfoSlaveKind {
-    BondPort,
+    Bond,
     Other(String),
 }
 
@@ -630,7 +629,7 @@ impl Nla for InfoSlaveKind {
     fn value_len(&self) -> usize {
         use self::InfoSlaveKind::*;
         let len = match *self {
-            BondPort => BONDPORT.len(),
+            Bond => BOND.len(),
             Other(ref s) => s.len(),
         };
         len + 1
@@ -639,7 +638,7 @@ impl Nla for InfoSlaveKind {
     fn emit_value(&self, buffer: &mut [u8]) {
         use self::InfoSlaveKind::*;
         let s = match *self {
-            BondPort => BONDPORT,
+            Bond => BOND,
             Other(ref s) => s.as_str(),
         };
         buffer[..s.len()].copy_from_slice(s.as_bytes());
@@ -666,7 +665,7 @@ impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>>
         let s = parse_string(buf.value())
             .context("invalid IFLA_INFO_SLAVE_KIND value")?;
         Ok(match s.as_str() {
-            BONDPORT => BondPort,
+            BOND => Bond,
             _ => Other(s),
         })
     }
