@@ -352,7 +352,6 @@ pub enum InfoData {
     Veth(VethInfo),
     Vxlan(Vec<InfoVxlan>),
     Bond(Vec<InfoBond>),
-    BondPort(Vec<InfoBondPort>),
     IpVlan(Vec<InfoIpVlan>),
     MacVlan(Vec<InfoMacVlan>),
     MacVtap(Vec<InfoMacVtap>),
@@ -377,7 +376,6 @@ impl Nla for InfoData {
         use self::InfoData::*;
         match self {
             Bond(ref nlas) => nlas.as_slice().buffer_len(),
-            BondPort(ref nlas) => nlas.as_slice().buffer_len(),
             Bridge(ref nlas) => nlas.as_slice().buffer_len(),
             Vlan(ref nlas) =>  nlas.as_slice().buffer_len(),
             Veth(ref msg) => msg.buffer_len(),
@@ -411,7 +409,6 @@ impl Nla for InfoData {
         use self::InfoData::*;
         match self {
             Bond(ref nlas) => nlas.as_slice().emit(buffer),
-            BondPort(ref nlas) => nlas.as_slice().emit(buffer),
             Bridge(ref nlas) => nlas.as_slice().emit(buffer),
             Vlan(ref nlas) => nlas.as_slice().emit(buffer),
             Veth(ref msg) => msg.emit(buffer),
