@@ -1861,31 +1861,6 @@ mod tests {
 
     #[rustfmt::skip]
     #[test]
-    fn parse_info_bondport() {
-        let data = vec![
-            0x0c, 0x00,                                         // length
-            0x01, 0x00,                                       // IFLA_INFO_KIND
-            0x62, 0x6f, 0x6e, 0x64, 0x70, 0x6f, 0x72, 0x74,    // "bond"
-
-            0x0c, 0x00,                 // length
-            0x02, 0x00,                 // IFLA_INFO_DATA
-                0x08, 0x00,             // length
-                0x01, 0x00,             // IFLA_BOND_SLAVE_PRIO
-                0x32, 0x00, 0x00, 0x00, // 50
-
-        ];
-        let nla = NlaBuffer::new_checked(&data[..]).unwrap();
-        let parsed = VecInfo::parse(&nla).unwrap().0;
-        let expected = vec![
-            Info::Kind(InfoKind::BondPort),
-            Info::Data(InfoData::BondPort(vec![InfoBondPort::Prio(50),
-            ])),
-        ];
-        assert_eq!(expected, parsed);
-    }
-
-    #[rustfmt::skip]
-    #[test]
     fn parse_info_bond() {
         let data = vec![
             0x08, 0x00,                // length
