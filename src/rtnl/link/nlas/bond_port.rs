@@ -169,10 +169,13 @@ impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>> for InfoBondPort {
                     .into(),
             ),
             IFLA_BOND_SLAVE_PERM_HWADDR => PermHwaddr(payload.to_vec()),
-            IFLA_BOND_SLAVE_PRIO => Prio(
-                parse_i32(payload)
-                    .context("invalid IFLA_BOND_SLAVE_PRIO value")?,
-            ),
+            IFLA_BOND_SLAVE_PRIO => {
+                eprintln!("*******parsing prio********");
+                Prio(
+                    parse_i32(payload)
+                        .context("invalid IFLA_BOND_SLAVE_PRIO value")?,
+                )
+            }
             IFLA_BOND_SLAVE_QUEUE_ID => QueueId(
                 parse_u16(payload)
                     .context("invalid IFLA_BOND_SLAVE_QUEUE_ID value")?,
