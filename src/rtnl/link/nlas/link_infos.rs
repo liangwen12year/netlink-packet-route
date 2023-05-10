@@ -472,6 +472,8 @@ impl Nla for InfoSlaveData {
             BondPort(ref nlas) => nlas.as_slice().emit(buffer),
             Other(ref bytes) => buffer.copy_from_slice(bytes),
         }
+        eprintln!("********end of data emit value*******");
+        eprintln!("{:?}", buffer)
     }
 
     fn kind(&self) -> u16 {
