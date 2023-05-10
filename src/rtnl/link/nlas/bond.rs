@@ -271,7 +271,10 @@ impl Nla for InfoBond {
                 | LpInterval(value)
                 | PacketsPerSlave(value)
                 | PeerNotifDelay(value)
-             => NativeEndian::write_u32(buffer, *value),
+             => {
+                eprintln!("*******miimon set*******");
+                eprintln!("{:?}", value);
+                NativeEndian::write_u32(buffer, *value);}
             AdActorSystem(bytes) => buffer.copy_from_slice(bytes),
             ArpIpTarget(addrs) => {
                 BondIpAddrNlaList::from(addrs).as_slice().emit(buffer)
@@ -326,6 +329,7 @@ impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>> for InfoBond {
     fn parse(buf: &NlaBuffer<&'a T>) -> Result<Self, DecodeError> {
         use self::InfoBond::*;
         let payload = buf.value();
+        eprintln!("bond parse start****");
         Ok(match buf.kind() {
             IFLA_BOND_MODE => Mode(
                 parse_u8(payload).context("invalid IFLA_BOND_MODE value")?,
