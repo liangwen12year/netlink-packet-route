@@ -77,6 +77,8 @@ impl Nla for Info {
             SlaveKind(ref nla) => nla.emit_value(buffer),
             SlaveData(ref nla) => nla.emit_value(buffer),
         }
+        eprintln!("********end of info emit value*******");
+        eprintln!("{:?}", buffer)
     }
 
     fn kind(&self) -> u16 {

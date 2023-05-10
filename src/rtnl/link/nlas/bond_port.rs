@@ -115,21 +115,30 @@ impl Nla for InfoBondPort {
         match self {
            QueueId(ref value)
              => {
-                eprintln!("+++++");
+                eprintln!("*******queue id set*******");
                 eprintln!("{:?}", value);
                 NativeEndian::write_u16(buffer, *value);
             }
              PermHwaddr(ref bytes)
              => buffer.copy_from_slice(bytes.as_slice()),
              Prio(ref value)
-             => { eprintln!(">>>>>");
+             => { eprintln!("*******prio set*******");
                   eprintln!("{:?}", value);
                 NativeEndian::write_i32(buffer, *value);
                 }
             LinkFailureCount(value)
-             => NativeEndian::write_u32(buffer, *value),
-             MiiStatus(state) => buffer[0] = (*state).into(),
-             SlaveState(state) => buffer[0] = (*state).into(),
+             => {eprintln!("*******link failure count set*******");
+                eprintln!("{:?}", value);
+                NativeEndian::write_u32(buffer, *value);
+             }
+             MiiStatus(state) => {
+                eprintln!("*******mii status set*******");
+                eprintln!("{:?}", state);
+                buffer[0] = (*state).into();}
+             SlaveState(state) => {
+                eprintln!("*******slave state set*******");
+                eprintln!("{:?}", state);
+                buffer[0] = (*state).into();}
              Other(nla)
              => {eprintln!("******other****");
                 nla.emit_value(buffer);}
