@@ -117,14 +117,14 @@ impl Nla for InfoBondPort {
              => {
                 eprintln!("+++++");
                 eprintln!("{:?}", value);
-                NativeEndian::write_u16(buffer, *value)
+                NativeEndian::write_u16(buffer, *value);
             }
              PermHwaddr(ref bytes)
              => buffer.copy_from_slice(bytes.as_slice()),
              Prio(ref value)
              => { eprintln!(">>>>>");
                   eprintln!("{:?}", value);
-                NativeEndian::write_i32(buffer, *value)
+                NativeEndian::write_i32(buffer, *value);
                 }
             LinkFailureCount(value)
              => NativeEndian::write_u32(buffer, *value),
@@ -132,7 +132,7 @@ impl Nla for InfoBondPort {
              SlaveState(state) => buffer[0] = (*state).into(),
              Other(nla)
              => {eprintln!("******other****");
-                nla.emit_value(buffer)}
+                nla.emit_value(buffer);}
         }
     }
 
