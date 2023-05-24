@@ -120,10 +120,14 @@ impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>> for VecInfo {
                     res.push(Info::Xstats(nla.value().to_vec()))
                 }
                 IFLA_INFO_SLAVE_KIND => {
+                    eprintln!("{:?}", nla.value());
+                    eprintln!("slave kind");
                     res.push(Info::SlaveKind(nla.value().to_vec()))
                 }
                 IFLA_INFO_SLAVE_DATA => {
+                    eprintln!("before ifla info slave data");
                     if let Some(link_info_kind) = link_info_kind {
+                        eprintln!("start ifla info slave data");
                         let payload = nla.value();
                         let mut info_slave_data: Option<InfoSlaveData> = None;
                         if link_info_kind == InfoKind::BondPort {
@@ -136,6 +140,7 @@ impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>> for VecInfo {
                                     .context(err)?;
                                 v.push(parsed);
                             }
+                            eprintln!("before push ifla info slave data***");
                             info_slave_data = Some(InfoSlaveData::BondPort(v));
                         }
                         else{
@@ -143,11 +148,13 @@ impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>> for VecInfo {
                         }
                         res.push(Info::SlaveData(info_slave_data.unwrap()));
                     } else {
+                        eprintln!("else ifla info slave data");
                         return Err("IFLA_INFO_SLAVE_DATA is not preceded by an IFLA_INFO_KIND".into());
                     }
                     link_info_kind = None;
                 }
                 IFLA_INFO_KIND => {
+                    eprintln!("kind****");
                     let parsed = InfoKind::parse(&nla)?;
                     res.push(Info::Kind(parsed.clone()));
                     link_info_kind = Some(parsed);
@@ -305,6 +312,7 @@ impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>> for VecInfo {
                                 InfoData::Wireguard(payload.to_vec())
                             }
                             InfoKind::Other(_) | InfoKind::BondPort => {
+                                eprintln!("InfoKind other**");
                                 InfoData::Other(payload.to_vec())
                             }
                             InfoKind::Xfrm => {
