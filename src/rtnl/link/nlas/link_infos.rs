@@ -129,6 +129,30 @@ impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>> for VecInfo {
                 }
                 IFLA_INFO_SLAVE_DATA => {
                     eprintln!("before ifla info slave data");
+                    if let Some(link_info_slave_kind) = link_info_slave_kind {
+                        let payload = nla.value();
+                        let info_slave_data = match link_info_slave_kind {
+                            InfoSlaveKind::Bond => {
+                                let mut v = Vec::new();
+                                let err =
+                                        "failed to parse IFLA_INFO_SLAVE_DATA (IFLA_INFO_SLAVE_KIND is 'bond_port')";
+                                for nla in NlasIterator::new(payload) {
+                                    let nla = &nla.context(err)?;
+                                    let parsed = InfoBondPort::parse(nla)
+                                        .context(err)?;
+                                    v.push(parsed);
+                                }
+                                InfoSlaveData::BondPort(v)
+                            }
+                            InfoSlaveKind::Other(_) => {
+                                InfoSlaveData::Other(payload.to_vec())
+                            }
+                        };
+                        res.push(Info::SlaveData(info_slave_data));
+                    }
+                    link_info_slave_kind = None;
+
+
                     if let Some(link_info_kind) = link_info_kind {
                         eprintln!("start ifla info slave data");
                         let payload = nla.value();
@@ -150,10 +174,11 @@ impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>> for VecInfo {
                             info_slave_data = Some(InfoSlaveData::Other(payload.to_vec()));
                         }
                         res.push(Info::SlaveData(info_slave_data.unwrap()));
-                    } else {
-                        eprintln!("else ifla info slave data");
-                        return Err("IFLA_INFO_SLAVE_DATA is not preceded by an IFLA_INFO_KIND".into());
                     }
+                    // else {
+                    //     eprintln!("else ifla info slave data");
+                    //     return Err("IFLA_INFO_SLAVE_DATA is not preceded by an IFLA_INFO_KIND".into());
+                    // }
                     link_info_kind = None;
                 }
                 IFLA_INFO_KIND => {
